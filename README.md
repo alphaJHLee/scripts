@@ -33,4 +33,5 @@ update_aptnm_elasticsearch.py
 
 elasticsearch_setting.txt
 - elasticsearch 인덱스 세팅 json에 주석 추가
+- #주석 제거 후 사용
 
