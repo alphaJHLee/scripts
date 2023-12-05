@@ -1,0 +1,175 @@
+
+##index 세팅
+
+
+PUT /apt_seq_extended 
+#json으로
+{
+    "settings": {
+        "index": {
+            "analysis": {
+               ## 토크나이저(문자열데이터 쪼개서 저장하는 방식) 먼저 정의
+                "tokenizer": {
+                    #카카오에서 제공하는 형태소 쪼개는(명사,동사,조사 등) nori tokenizer
+                    #유의어 사전정보 추가
+                    "my_nori_tokenizer_withud": {
+                        "type": "nori_tokenizer",
+                        "decompound_mode": "mixed",
+                       #구두점 삭제 여부(여기선 그대로 둔다)
+                        "discard_punctuation": "false",
+                       #사용자 사전 : 데이터를 쪼개지 않고 그대로 둔다(/etc/elasticsearch/analysis 폴더에 미리 생성해놨습니다)
+                        "user_dictionary": "analysis/usr_dict.txt"
+                    },
+                    #nori tokenizer에 사용자사전 적용 x(형태소 다 쪼개서 저장)
+                    "my_nori_tokenizer": {
+                        "type": "nori_tokenizer",
+                        "decompound_mode": "mixed",
+                        "discard_punctuation": "false"
+                    },
+                    #문자열을 1~2글자로 끊어서 저장("래미안" 문자열을 "래","래미","미","미안","안"으로 저장)
+                    "my_ngram_tokenizer": {
+                        "type": "ngram",
+                        "min_gram": 1,
+                        "max_gram": 2,
+                        "token_char":["letter","digit","punctuation",
+                        "symbol"]
+                    },
+                    #문자열을 2~3글자로 끊어서 저장("래미안" 문자열을 "래","래미","미","미안","안"으로 저장)
+                    "my_ngram_tokenizer2": {
+                        "type": "ngram",
+                        "min_gram": 2,
+                        "max_gram": 3,
+                        "token_char":["letter","digit","punctuation",
+                        "symbol"]
+                    }
+                },
+                "filter": {
+                    #문장 구조를 일차적으로 어떻게 쪼갤지 결정(여기선 " "로 결정)
+                    "stopwords": {
+                        "type": "stop",
+                        "stopwords": " "
+                    },
+                    #유의어 사전 정의 : /etc/elasticsearch/analysis에 미리 작성(이편한세상,e편한세상을 동시에 저장하기 위해 사용)
+                    "synonym" : {
+                         "type": "synonym",
+                         "synonyms_path": "analysis/synonym.txt"
+                    },
+                   #nori에서 제공하는 필터, 품사 취사선택 저장 기능(여기선 기본값 사용)
+                    "my_pos_f": {
+                         "type": "nori_part_of_speech",
+                         "stoptags": []}
+                },
+                #어떤 토크나이저와 필터를 적용해 인덱스 분석기 설계할건지 결정
+                "analyzer": {
+                    "my_nori_analyzer_withud": {
+                        "type": "custom",
+                        "tokenizer": "my_nori_tokenizer_withud",
+                        "filter": [
+                            "lowercase",
+                            "stop",
+                            "trim",
+                            "stopwords",
+                            "nori_part_of_speech",
+                            "synonym"
+                        ],
+                        "char_filter": [
+                            "html_strip"
+                        ]
+                    },
+                    "my_nori_analyzer": {
+                        "type": "custom",
+                        "tokenizer": "my_nori_tokenizer",
+                        "filter": [
+                            "lowercase",
+                            "stop",
+                            "trim",
+                            "stopwords",
+                            "nori_part_of_speech",
+                            "my_pos_f"
+                        ],
+                        "char_filter": [
+                            "html_strip"
+                        ]
+                    },
+                    "my_ngram_analyzer": {
+                        "type": "custom",
+                        "tokenizer": "my_ngram_tokenizer",
+                        "filter": [
+                            "lowercase",
+                            "stop",
+                            "trim",
+                            "stopwords",
+                            "nori_part_of_speech"
+                        ],
+                        "char_filter": [
+                            "html_strip"
+                        ]
+                    },
+                    "my_ngram_analyzer2": {
+                        "type": "custom",
+                        "tokenizer": "my_ngram_tokenizer2",
+                        "filter": [
+                            "lowercase",
+                            "stop",
+                            "trim",
+                            "stopwords",
+                            "nori_part_of_speech"
+                        ],
+                        "char_filter": [
+                            "html_strip"
+                        ]
+                    }
+                }
+            }
+        }
+    },
+##   세팅이 끝나면 실제 데이터 매핑(여기선 "apt_nm"과 ,"nm_forsearch" 데이터에 적용
+    "mappings": {
+        "properties": {
+            "apt_nm": {
+                "type": "text",
+                "analyzer": "standard",
+                "search_analyzer": "standard",
+                "fields": {
+                    "nori": {
+                        "type": "text",
+                        "analyzer": "my_nori_analyzer",
+                        "search_analyzer": "my_nori_analyzer"
+                    },
+                    "ngram": {
+                        "type": "text",
+                        "analyzer": "my_ngram_analyzer",
+                        "search_analyzer": "my_ngram_analyzer"
+                    }
+                }
+            },
+            "nm_forsearch": {
+                "type": "text",
+                "analyzer": "standard",
+                "search_analyzer": "standard",
+                "fields": {
+                    "nori_withud": {
+                        "type": "text",
+                        "analyzer": "my_nori_analyzer_withud",
+                        "search_analyzer": "my_nori_analyzer_withud"
+                    },
+                    "nori": {
+                        "type": "text",
+                        "analyzer": "my_nori_analyzer",
+                        "search_analyzer": "my_nori_analyzer"
+                    },
+                    "ngram": {
+                        "type": "text",
+                        "analyzer": "my_ngram_analyzer",
+                        "search_analyzer": "my_ngram_analyzer"
+                    },
+                    "ngram2": {
+                        "type": "text",
+                        "analyzer": "my_ngram_analyzer2",
+                        "search_analyzer": "my_ngram_analyzer"
+                    }
+                }
+            }
+        }
+    }
+}
